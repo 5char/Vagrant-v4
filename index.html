@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0a1016"><link rel="manifest" href="manifest.webmanifest"><title>Vagrant Echoes II</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#080d12;color:#e5e0d5;font-family:Georgia,serif;touch-action:none}
+canvas{display:block;width:100vw;height:100dvh;touch-action:none}
+#hud{position:fixed;inset:0;pointer-events:none;text-shadow:0 2px 4px #000}
+.top{position:absolute;top:max(8px,env(safe-area-inset-top));left:10px;right:10px;display:flex;justify-content:space-between;gap:8px;font:11px system-ui;letter-spacing:.08em}
+.panel{background:#101a21d9;border:1px solid #81909966;padding:8px 10px;backdrop-filter:blur(5px)}
+.brand{font:bold 15px Georgia;letter-spacing:.16em}.muted{color:#aab7bd;font-size:10px}.bar{height:6px;background:#343d42;width:130px;margin-top:4px}.fill{height:100%;background:#a94e42;width:100%}
+#controls{position:fixed;inset:0;pointer-events:none}.stick{position:absolute;left:18px;bottom:max(18px,env(safe-area-inset-bottom));width:128px;height:128px;border:1px solid #bdc9c455;border-radius:50%;background:#7c8e981c;pointer-events:auto}.nub{position:absolute;left:37px;top:37px;width:52px;height:52px;border:1px solid #dce4e477;border-radius:50%;background:#aab9c044}
+.actions{position:absolute;right:12px;bottom:max(18px,env(safe-area-inset-bottom));display:flex;gap:8px;align-items:end;pointer-events:auto}.act{width:62px;height:62px;border-radius:50%;border:1px solid #c6d1d477;background:#17252ddd;color:#eee;font:bold 10px system-ui;touch-action:none}.act.primary{width:76px;height:76px;background:#692e31e8;border-color:#d28c80}
+#menu{position:fixed;inset:0;background:#05090dcc;display:flex;align-items:center;justify-content:center;padding:16px;text-align:center}
+.card{width:min(540px,100%);max-height:90dvh;overflow:auto;background:linear-gradient(145deg,#202c34,#0b1117);border:1px solid #7d8a91;padding:20px;box-shadow:0 20px 90px #000}
+h1{font-size:clamp(27px,7vw,43px);letter-spacing:.12em;margin:0}.eyebrow{font:10px system-ui;letter-spacing:.25em;color:#a7b9c1;margin:7px 0 18px}p{font:13px/1.5 system-ui;color:#c5cdcf}
+button{cursor:pointer}.wide{width:100%;padding:13px;background:#713b39;color:#fff;border:1px solid #c68c7d;font:bold 12px system-ui;letter-spacing:.12em;margin-top:10px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px}.choice{padding:11px;background:#24323a;color:#eee;border:1px solid #87959b;text-align:left;font:12px system-ui}.choice small{color:#b5c1c5;display:block;margin-top:4px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:12px 0}.tab{background:#1b2a32;border:1px solid #6d7b82;color:#d9e0df;padding:8px 11px;font:11px system-ui}.tab.active{background:#65403d}
+.hidden{display:none!important}#toast{position:fixed;left:50%;top:23%;transform:translateX(-50%);padding:9px 14px;background:#101a21dd;border:1px solid #89979a;color:#e8e3d8;font:12px system-ui;pointer-events:none;opacity:0;transition:opacity .2s}
+@media(orientation:portrait){.panel .wideinfo{display:none}}
+</style><link rel="stylesheet" href="style.css"><link rel="icon" href="icons/icon-192.png"><link rel="apple-touch-icon" href="icons/icon-192.png"></head><body>
+<canvas id="game"></canvas>
+<div id="hud">
+ <div class="top">
+  <div class="panel"><div class="brand">VAGRANT ECHOES II</div><div class="muted" id="area">THE ASHEN NAVE</div><div style="margin-top:6px">VITALITY <span id="hp">100/100</span><div class="bar"><div class="fill" id="hpbar"></div></div><div class="muted" id="weapon">IRON LONGSWORD · LV 1</div></div></div>
+  <div class="panel" style="text-align:right">DEPTH <b id="depth">01</b><br><span id="wallet">SHARDS 0 · ORE 0</span><br><span id="foes">WRAITHS 0</span></div>
+ </div>
+</div>
+<div id="controls"><div class="stick" id="stick"><div class="nub" id="nub"></div></div><div class="actions"><button class="act" id="invbtn">PACK</button><button class="act" id="dash">DASH</button><button class="act primary" id="attack">STRIKE</button></div></div>
+<div id="toast"></div>
+<div id="menu"><div class="card" id="titleCard">
+<h1>VAGRANT ECHOES <span class="r">II</span></h1><div class="eyebrow">THE CATHEDRAL OF ASH</div>
+<p>A lone sellsword descends beneath a ruined orbital cathedral. Hunt machine-wraiths, forge relic steel and uncover the memory buried in the nave.</p>
+<p><b>Touch:</b> left stick · STRIKE · DASH · PACK<br><b>Keyboard:</b> WASD/arrows · Space · Shift · I</p>
+<button class="wide" id="newgame">BEGIN DESCENT</button><button class="wide" id="continue" style="background:#273942">CONTINUE SAVED DESCENT</button>
+<div class="muted" style="margin-top:12px">Autosaves between chambers on this device</div></div>
+<div class="card hidden" id="levelCard"><h1 style="font-size:26px">RELIC AWAKENED</h1><div class="eyebrow">CHOOSE ONE MODIFICATION</div><div class="grid" id="levelChoices"></div></div>
+<div class="card hidden" id="packCard"><h1 style="font-size:25px">FIELD COMPENDIUM</h1><div class="tabs"><button class="tab active" data-tab="gear">GEAR</button><button class="tab" data-tab="craft">FORGE</button><button class="tab" data-tab="lore">CHRONICLE</button></div><div id="packContent"></div><button class="wide" id="closepack">RETURN TO RUIN</button></div>
+<div class="card hidden" id="storyCard"><h1 style="font-size:25px">MEMORY FRAGMENT</h1><div class="eyebrow" id="storyTitle">THE FIRST SEAL</div><p id="storyText"></p><button class="wide" id="storyContinue">CONTINUE</button></div>
+<div class="card hidden" id="deadCard"><h1>THE RUIN CLAIMS YOU</h1><div class="eyebrow">DESCENT CONCLUDED</div><p id="result"></p><button class="wide" id="retry">DESCEND AGAIN</button><button class="wide" id="home" style="background:#273942">TITLE SCREEN</button></div>
+</div>
+<script>addEventListener('error',function(e){var d=document.getElementById('err');if(!d){d=document.createElement('pre');d.id='err';d.style.cssText='position:fixed;z-index:99;left:0;right:0;top:0;margin:0;background:#400;color:#fff;font:11px monospace;padding:6px;white-space:pre-wrap;pointer-events:none';document.body.appendChild(d)}d.textContent+=(e.message||'load error')+' '+String(e.filename||(e.target&&e.target.src)||'').split('/').pop()+':'+(e.lineno||'')+'\n'},true)</script>
+<script src="art.js?v=32"></script><script src="audio.js?v=32"></script>
+<script>if(typeof VEaudio==='undefined')window.VEaudio={init(){},sfx(){},track(){}};if(typeof VEart==='undefined')window.VEart={draw(c,W,H){c.fillStyle='#0a0e1a';c.fillRect(0,0,W,H)}}</script>
+<script>
+(()=>{
+const cv=document.querySelector('canvas'),c=cv.getContext('2d');let W,H,D=1;
+function resize(){D=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;cv.width=W*D;cv.height=H*D;c.setTransform(D,0,0,D,0,0)}addEventListener('resize',resize);resize();
+const $=id=>document.getElementById(id);
+const weapons=[
+{name:'Iron Longsword',kind:'sword',damage:26,reach:55,speed:.42,desc:'Balanced blade. Reliable in every encounter.'},
+{name:'Pilgrim Daggers',kind:'daggers',damage:17,reach:43,speed:.24,desc:'Twin strikes. Fast, short-ranged attacks.'},
+{name:'Gravemarch Axe',kind:'axe',damage:48,reach:61,speed:.72,desc:'A brutal cleaver with a slow wind-up.'},
+{name:'Choir Greatsword',kind:'greatsword',damage:62,reach:72,speed:.82,desc:'A relic blade that staggers heavy foes.'}
+];
+let S='title',p=null,enemies=[],drops=[],fx=[],floor=1,kills=0,shards=0,ore=0,room=0,cd=0,dashcd=0,shake=0,bossDone=false,storyIndex=0,move={x:0,y:0},keys={},last=performance.now(),inventory={potions:1,upgrades:[],crafted:[]},weaponIndex=0,areaNames=['THE ASHEN NAVE','THE SUNKEN TRANSEPT','THE IRON OSSUARY','THE ORBITAL SANCTUM'];
+const stories=[
+['A KNIGHT WITHOUT A BANNER','The cathedral was built to preserve the voices of the dead. When the orbital choir fell silent, its machines began to dream in the language of grief.'],
+['THE BLACK RELIQUARY','A memory surfaces: a sealed engine beneath the nave, older than the city above. The order called it a saint. The engineers called it a weapon.'],
+['THE LAST PROCESSION','The banners once marked a pilgrimage between worlds. Now they hang above empty armour, each suit still waiting for its name to be spoken.'],
+['THE HEART OF THE CHOIR','The voice below is not a god. It is the sum of every memory fed into the cathedral engine—and it knows the name you buried.']
+];
+function fresh(){return{x:0,y:0,r:13,hp:120,max:120,speed:185,damage:0,reach:0,face:0,inv:0,crit:.08,armor:0}}
+function hide(){ $('menu').classList.add('hidden');document.querySelectorAll('#menu .card').forEach(x=>x.classList.add('hidden'))}
+function panel(id){$('menu').classList.remove('hidden');document.querySelectorAll('#menu .card').forEach(x=>x.classList.add('hidden'));$(id).classList.remove('hidden')}
+function toast(t){$('toast').textContent=t;$('toast').style.opacity=1;clearTimeout(toast.t);toast.t=setTimeout(()=>$('toast').style.opacity=0,1500)}
+function save(){if(!p)return;localStorage.setItem('ve2save',JSON.stringify({p,floor,kills,shards,ore,inventory,weaponIndex,storyIndex}))}
+function load(){try{let d=JSON.parse(localStorage.getItem('ve2save'));if(!d)return false;({p,floor,kills,shards,ore,inventory,weaponIndex,storyIndex}=d);return true}catch(e){return false}}
+function start(){p=fresh();floor=1;kills=shards=ore=0;inventory={potions:1,upgrades:[],crafted:[]};weaponIndex=0;storyIndex=0;room=0;startRoom();S='play';hide();story(0)}
+function startRoom(){VEaudio.track(floor%4===0?"boss":"explore");enemies=[];drops=[];p.x=p.y=0;bossDone=false;let boss=floor%4===0,n=boss?1:4+floor*2;for(let i=0;i<n;i++){let a=Math.random()*Math.PI*2,r=boss?250:180+Math.random()*260;let hp=boss?330+floor*55:36+floor*9;enemies.push({x:Math.cos(a)*r,y:Math.sin(a)*r,r:boss?31:13+Math.random()*4,hp,max:hp,speed:boss?48:52+Math.random()*30+floor*2,boss,hit:0,phase:Math.random()*8,attack:0})}}
+function currentWeapon(){return weapons[weaponIndex]}
+function dmg(){return currentWeapon().damage+(p.damage||0)}
+function reach(){return currentWeapon().reach+(p.reach||0)}
+function story(i){if(i>=stories.length)return;storyIndex=i; $('storyTitle').textContent=stories[i][0];$('storyText').textContent=stories[i][1];S='story';VEaudio.sfx('story');panel('storyCard')}
+$('storyContinue').onclick=()=>{S='play';hide();save()};
+function chooseUpgrade(){S='level';VEaudio.sfx('win');let pool=[
+['Blood Temper','Weapon damage +20%.',()=>p.damage+=8],
+['Grav Boots','Movement speed +12%.',()=>p.speed*=1.12],
+['Aegis Coil','Maximum vitality +30 and restore 30.',()=>{p.max+=30;p.hp=Math.min(p.max,p.hp+30)}],
+['Void Edge','Weapon reach +15%.',()=>p.reach+=9],
+['Echo Drive','Dash cooldown reduced.',()=>p.dashFactor=(p.dashFactor||1)*.8],
+['Saints Mercy','Restore 45 vitality.',()=>p.hp=Math.min(p.max,p.hp+45)],
+['Tempered Guard','Reduce incoming damage.',()=>p.armor=(p.armor||0)+.18]
+].sort(()=>Math.random()-.5).slice(0,3);$('levelChoices').innerHTML='';pool.forEach(u=>{let b=document.createElement('button');b.className='choice';b.innerHTML='<b>'+u[0]+'</b><small>'+u[1]+'</small>';b.onclick=()=>{VEaudio.sfx("level");u[2]();inventory.upgrades.push(u[0]);floor++;startRoom();S='play';hide();if(floor===5||floor===9||floor===13)story(Math.min(storyIndex+1,3));save()};$('levelChoices').appendChild(b)});panel('levelCard')}
+function attack(){if(S!=='play'||cd>0)return;let w=currentWeapon();cd=w.speed;VEaudio.sfx("slash");let landed=false;for(let e of enemies){let dx=e.x-p.x,dy=e.y-p.y,d=Math.hypot(dx,dy),a=Math.atan2(dy,dx),diff=Math.atan2(Math.sin(a-p.face),Math.cos(a-p.face));if(d<reach()+e.r&&Math.abs(diff)<(w.kind==='axe'?1.2:.95)){let crit=Math.random()<p.crit;e.hp-=dmg()*(crit?1.8:1);e.hit=.2;landed=true;VEaudio.sfx(crit?'crit':'hit');burst(e.x,e.y,crit?'#f2d19a':'#c47a66',8);if(e.hp<=0){kills++;VEaudio.sfx("kill");shards+=e.boss?8:1+Math.floor(Math.random()*2);ore+=e.boss?5:(Math.random()<.24?1:0);drops.push({x:e.x,y:e.y,type:'shard'});if(e.boss){bossDone=true;toast('THE WARDEN HAS FALLEN');}}}}enemies=enemies.filter(e=>e.hp>0);if(landed)shake=5;if(!enemies.length){setTimeout(()=>{if(S==='play')chooseUpgrade()},550)}}
+function dash(){if(S!=='play'||dashcd>0)return;let x=move.x,y=move.y;if(Math.hypot(x,y)<.1){x=Math.cos(p.face);y=Math.sin(p.face)}let l=Math.hypot(x,y);p.x=Math.max(-430,Math.min(430,p.x+x/l*135));p.y=Math.max(-430,Math.min(430,p.y+y/l*135));VEaudio.sfx("dash");p.inv=.36;dashcd=.95*(p.dashFactor||1);burst(p.x,p.y,'#8fb4c4',13)}
+function burst(x,y,color,n){for(let i=0;i<n;i++){let a=Math.random()*6.28,s=35+Math.random()*170;fx.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:.35+Math.random()*.45,color})}}
+function die(){S='dead';VEaudio.sfx('die');VEaudio.track('title');$('result').textContent=`Depth ${floor} · ${kills} enemies defeated · ${shards} shards · ${ore} forge ore. Your relics and memories remain recorded in this run.`;panel('deadCard');save()}
+$('newgame').onclick=start;$('retry').onclick=()=>{localStorage.removeItem('ve2save');start()};$('home').onclick=()=>{VEaudio.track('title');S='title';panel('titleCard')};
+$('continue').onclick=()=>{if(load()){startRoom();S='play';hide();toast('DESCENT RESTORED')}else toast('NO SAVED DESCENT')};
+$('attack').onpointerdown=e=>{e.preventDefault();attack()};$('dash').onpointerdown=e=>{e.preventDefault();dash()};
+addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.code==='Space'){e.preventDefault();attack()}if(e.key==='Shift')dash();if(e.key.toLowerCase()==='i')openPack()});addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+let st=$('stick'),nub=$('nub'),sid=null;st.onpointerdown=e=>{sid=e.pointerId;st.setPointerCapture(sid);stickMove(e)};st.onpointermove=e=>{if(e.pointerId===sid)stickMove(e)};function stickMove(e){let r=st.getBoundingClientRect(),x=e.clientX-r.left-r.width/2,y=e.clientY-r.top-r.height/2,l=Math.hypot(x,y),m=Math.min(1,l/48);move={x:l?x/l*m:0,y:l?y/l*m:0};nub.style.transform=`translate(${move.x*37}px,${move.y*37}px)`}function stickEnd(e){if(e.pointerId===sid){sid=null;move={x:0,y:0};nub.style.transform='translate(0,0)'}}st.onpointerup=stickEnd;st.onpointercancel=stickEnd;
+function openPack(){if(S!=='play')return;S='pack';renderPack('gear');panel('packCard')}
+$('invbtn').onclick=openPack;$('closepack').onclick=()=>{S='play';hide()};
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');renderPack(b.dataset.tab)});
+function renderPack(tab){let el=$('packContent');if(tab==='gear'){el.innerHTML=`<p><b>Equipped:</b> ${currentWeapon().name}</p><div class="grid">${weapons.map((w,i)=>`<button class="choice" data-weapon="${i}" ${i===weaponIndex?'disabled':''}><b>${w.name}</b><small>DMG ${w.damage} · REACH ${w.reach}<br>${w.desc}</small></button>`).join('')}</div><p>Relic powers: ${inventory.upgrades.join(', ')||'None yet'}</p><p>Potions: ${inventory.potions} · Shards: ${shards} · Ore: ${ore}</p><button class="wide" id="drink">USE HEALING PHIAL (+45 HP)</button>`;el.querySelectorAll('[data-weapon]').forEach(b=>b.onclick=()=>{weaponIndex=+b.dataset.weapon;toast('EQUIPPED '+currentWeapon().name.toUpperCase());renderPack('gear');save()});el.querySelector('#drink').onclick=()=>{if(inventory.potions>0&&p.hp<p.max){inventory.potions--;p.hp=Math.min(p.max,p.hp+45);toast('VITALITY RESTORED');renderPack('gear')}else toast('NO PHIAL OR VITALITY FULL')}}
+if(tab==='craft'){el.innerHTML=`<p><b>FIELD FORGE</b><br>Convert gathered materials into equipment and supplies.</p><div class="grid"><button class="choice" id="craftD"><b>Tempered Edge</b><small>4 ore + 5 shards<br>Permanent +12 weapon damage this run.</small></button><button class="choice" id="craftP"><b>Healing Phial</b><small>2 ore + 3 shards<br>Restore 1 potion.</small></button><button class="choice" id="craftA"><b>Choir Plating</b><small>6 ore + 8 shards<br>Maximum vitality +20.</small></button><button class="choice" id="craftC"><b>Critical Sigil</b><small>5 ore + 10 shards<br>Critical chance +8%.</small></button></div><p>Materials: ${ore} ore · ${shards} shards</p>`;let craft=(id,costO,costS,fn)=>el.querySelector(id).onclick=()=>{if(ore<costO||shards<costS){toast('NOT ENOUGH MATERIALS');return}ore-=costO;shards-=costS;fn();inventory.crafted.push(id);VEaudio.sfx('forge');toast('FORGE COMPLETE');renderPack('craft');save()};craft('#craftD',4,5,()=>p.damage+=12);craft('#craftP',2,3,()=>inventory.potions++);craft('#craftA',6,8,()=>{p.max+=20;p.hp+=20});craft('#craftC',5,10,()=>p.crit+=.08)}
+if(tab==='lore'){el.innerHTML=`<p><b>CHRONICLE OF THE FALLEN CHOIR</b></p>${stories.slice(0,Math.max(1,storyIndex+1)).map((s,i)=>`<p><b>${s[0]}</b><br>${s[1]}</p>`).join('')}<p>Deepest descent: ${floor}. Wraiths defeated: ${kills}.</p>`}}
+function update(dt){if(S!=='play')return;let x=move.x,y=move.y;if(keys.w||keys.arrowup)y--;if(keys.s||keys.arrowdown)y++;if(keys.a||keys.arrowleft)x--;if(keys.d||keys.arrowright)x++;let l=Math.hypot(x,y);if(l>1){x/=l;y/=l}if(l>.05)p.face=Math.atan2(y,x);p.x+=x*p.speed*dt;p.y+=y*p.speed*dt;p.x=Math.max(-430,Math.min(430,p.x));p.y=Math.max(-430,Math.min(430,p.y));p.inv=Math.max(0,p.inv-dt);cd=Math.max(0,cd-dt);dashcd=Math.max(0,dashcd-dt);shake=Math.max(0,shake-dt*18);
+for(let e of enemies){e.hit=Math.max(0,e.hit-dt);e.phase+=dt*2;let dx=p.x-e.x,dy=p.y-e.y,d=Math.hypot(dx,dy)||1;e.x+=dx/d*e.speed*dt;e.y+=dy/d*e.speed*dt;e.attack-=dt;if(e.boss&&d<180&&e.attack<=0){e.attack=2.5;VEaudio.sfx("shoot");let a=Math.atan2(dy,dx);for(let j=-1;j<=1;j++){let ang=a+j*.22;fx.push({x:e.x,y:e.y,vx:Math.cos(ang)*220,vy:Math.sin(ang)*220,life:1.1,max:1.1,color:'#d65c48',projectile:true})}}if(d<p.r+e.r+3&&p.inv<=0){p.hp-=Math.max(3,(e.boss?24:15)*(1-(p.armor||0)))*dt;p.inv=.08;shake=2;VEaudio.sfx("hurt")}}
+for(let f of fx){if(f.projectile){f.x+=f.vx*dt;f.y+=f.vy*dt;if(Math.hypot(f.x-p.x,f.y-p.y)<p.r+7&&p.inv<=0){p.hp-=14;p.inv=.35;VEaudio.sfx("hurt");f.life=0;burst(f.x,f.y,'#d65c48',5)}}else{f.x+=f.vx*dt;f.y+=f.vy*dt;f.vx*=.94;f.vy*=.94}f.life-=dt}fx=fx.filter(f=>f.life>0);
+if(p.hp<=0){p.hp=0;die()}$('hp').textContent=`${Math.ceil(p.hp)}/${p.max}`;$('hpbar').style.width=100*p.hp/p.max+'%';$('depth').textContent=String(floor).padStart(2,'0');$('wallet').textContent=`SHARDS ${shards} · ORE ${ore}`;$('foes').textContent=(enemies.some(e=>e.boss)?'WARDEN ':'WRAITHS ')+enemies.length;$('area').textContent=areaNames[Math.min(3,Math.floor((floor-1)/3))];$('weapon').textContent=currentWeapon().name.toUpperCase()+' · DMG '+dmg()}
+function iso(x,y){return{x:(x-y)*.72,y:(x+y)*.36}}
+function draw(){VEart.draw(c,W,H,{S,p,enemies,drops,fx,cd,w:currentWeapon(),shake})}
+VEaudio.track('title');
+function loop(t){let dt=Math.min((t-last)/1000,.035);last=t;if(!p)p=fresh();requestAnimationFrame(loop);try{update(dt);draw()}catch(err){console.error(err)}}requestAnimationFrame(loop);
+})();
+if('serviceWorker'in navigator)addEventListener('load',()=>{const had=!!navigator.serviceWorker.controller;navigator.serviceWorker.register('./sw.js').catch(()=>{});navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!window.__r){window.__r=1;location.reload()}})});
+</script></body></html>
